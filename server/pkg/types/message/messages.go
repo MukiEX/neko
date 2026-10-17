@@ -11,7 +11,8 @@ import (
 /////////////////////////////
 
 type SystemWebRTC struct {
-	Videos []string `json:"videos"`
+	Videos []string           `json:"videos"`
+	Audios []types.AudioTrack `json:"audios"`
 }
 
 type SystemInit struct {

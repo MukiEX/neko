@@ -49,6 +49,10 @@ export const EVENT = {
     INIT: 'openinapp/init',
     OPENLINK: 'openinapp/openlink',
   },
+  AUDIO: {
+    TRACKS: 'audio/tracks',
+    TRACK: 'audio/track',
+  },
   SCREEN: {
     CONFIGURATIONS: 'screen/configurations',
     RESOLUTION: 'screen/resolution',
@@ -83,6 +87,7 @@ export type WebSocketEvents =
   | ChatEvents
   | FileTransferEvents
   | OpenInAppEvents
+  | AudioEvents
   | ScreenEvents
   | BroadcastEvents
   | AdminEvents
@@ -110,6 +115,8 @@ export type ChatEvents = typeof EVENT.CHAT.MESSAGE | typeof EVENT.CHAT.EMOTE
 export type FileTransferEvents = typeof EVENT.FILETRANSFER.LIST | typeof EVENT.FILETRANSFER.REFRESH
 
 export type OpenInAppEvents = typeof EVENT.OPENINAPP.INIT | typeof EVENT.OPENINAPP.OPENLINK
+
+export type AudioEvents = typeof EVENT.AUDIO.TRACKS | typeof EVENT.AUDIO.TRACK
 
 export type ScreenEvents = typeof EVENT.SCREEN.CONFIGURATIONS | typeof EVENT.SCREEN.RESOLUTION | typeof EVENT.SCREEN.SET
 

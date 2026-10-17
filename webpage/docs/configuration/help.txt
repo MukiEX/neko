@@ -1,6 +1,8 @@
       --capture.audio.codec string                    audio codec to be used (default "opus")
       --capture.audio.device string                   pulseaudio device to capture (default "audio_output.monitor")
+      --capture.audio.ids strings                     ordered list of selectable audio track ids, the first one is the default
       --capture.audio.pipeline string                 gstreamer pipeline used for audio streaming
+      --capture.audio.pipelines string                selectable audio tracks config, if empty a single track is built from capture.audio.device and capture.audio.pipeline (default "{}")
       --capture.broadcast.audio_bitrate int           broadcast audio bitrate in KB/s (default 128)
       --capture.broadcast.autostart                   automatically start broadcasting when neko starts and broadcast_url is set (default true)
       --capture.broadcast.pipeline string             gstreamer pipeline used for broadcasting

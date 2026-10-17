@@ -29,7 +29,7 @@ type WebRTCPeerCtx struct {
 	estimateTrend *utils.TrendDetector
 	// stream selectors
 	video types.EncodedStreamSelector
-	audio types.EncodedStream
+	audio types.EncodedStreamSelector
 	// tracks & channels
 	audioTrack  *Track
 	videoTrack  *Track
@@ -42,6 +42,7 @@ type WebRTCPeerCtx struct {
 	videoAuto       bool
 	videoDisabled   bool
 	audioDisabled   bool
+	audioID         string
 }
 
 //
@@ -440,6 +441,26 @@ func (peer *WebRTCPeerCtx) SetAudio(r types.PeerAudioRequest) error {
 
 	modified := false
 
+	// audio track
+	if r.ID != nil && *r.ID != peer.audioID {
+		stream, ok := peer.audio.GetStream(types.StreamSelector{
+			ID:   *r.ID,
+			Type: types.StreamSelectorTypeExact,
+		})
+		if !ok {
+			return types.ErrWebRTCStreamNotFound
+		}
+
+		// switches the subscription, or only remembers the stream while paused
+		if _, err := peer.audioTrack.SetStream(stream); err != nil {
+			return err
+		}
+
+		peer.audioID = *r.ID
+		peer.logger.Info().Str("audio_id", peer.audioID).Msg("set audio track")
+		modified = true
+	}
+
 	// audio disabled
 	if r.Disabled != nil {
 		disabled := *r.Disabled
@@ -454,7 +475,7 @@ func (peer *WebRTCPeerCtx) SetAudio(r types.PeerAudioRequest) error {
 		}
 	}
 
-	// send video signal if modified
+	// send audio signal if modified
 	if modified {
 		go func() {
 			// in goroutine because of mutex and we don't want to block
@@ -472,6 +493,7 @@ func (peer *WebRTCPeerCtx) Audio() types.PeerAudio {
 
 	return types.PeerAudio{
 		Disabled: peer.audioDisabled,
+		ID:       peer.audioID,
 	}
 }
 

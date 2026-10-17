@@ -81,6 +81,19 @@ func (s *session) wsToBackend(msg []byte) error {
 			SDP: request.SDP,
 		})
 
+	case oldEvent.AUDIO_TRACK:
+		request := &oldMessage.AudioTrackSelect{}
+		err := json.Unmarshal(msg, request)
+		if err != nil {
+			return err
+		}
+
+		return s.toBackend(event.SIGNAL_AUDIO, &message.SignalAudio{
+			PeerAudioRequest: types.PeerAudioRequest{
+				ID: &request.ID,
+			},
+		})
+
 	case oldEvent.SIGNAL_CANDIDATE:
 		request := &oldMessage.SignalCandidate{}
 		err := json.Unmarshal(msg, request)

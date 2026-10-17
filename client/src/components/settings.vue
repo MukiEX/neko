@@ -51,6 +51,15 @@
           <span />
         </label>
       </li>
+      <li v-if="audio_tracks.length > 1">
+        <span>{{ $t('setting.audio_track') }}</span>
+        <label class="select">
+          <select v-model="audio_track">
+            <option v-for="track in audio_tracks" :key="track.id" :value="track.id">{{ track.label }}</option>
+          </select>
+          <span />
+        </label>
+      </li>
       <li class="broadcast" v-if="admin">
         <div>
           <span>{{ $t('setting.broadcast_title') }}</span>
@@ -379,6 +388,18 @@
 
     get keyboard_layout() {
       return this.$accessor.settings.keyboard_layout
+    }
+
+    get audio_tracks() {
+      return this.$accessor.video.audioTracks
+    }
+
+    get audio_track() {
+      return this.$accessor.video.audioTrack
+    }
+
+    set audio_track(value: string) {
+      this.$accessor.video.audioTrackSet(value)
     }
 
     get broadcast_is_active() {

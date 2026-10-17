@@ -32,6 +32,21 @@ type SignalProvide struct {
 	ICE   []webrtc.ICEServer `json:"ice"`
 }
 
+type AudioTrack struct {
+	ID    string `json:"id"`
+	Label string `json:"label"`
+}
+
+type AudioTracks struct {
+	Event  string       `json:"event"`
+	Tracks []AudioTrack `json:"tracks"`
+}
+
+type AudioTrackSelect struct {
+	Event string `json:"event"`
+	ID    string `json:"id"`
+}
+
 type SignalOffer struct {
 	Event string `json:"event"`
 	SDP   string `json:"sdp"`

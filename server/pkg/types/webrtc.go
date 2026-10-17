@@ -32,11 +32,13 @@ type PeerVideoRequest struct {
 }
 
 type PeerAudio struct {
-	Disabled bool `json:"disabled"`
+	Disabled bool   `json:"disabled"`
+	ID       string `json:"id"` // selected audio track
 }
 
 type PeerAudioRequest struct {
-	Disabled *bool `json:"disabled,omitempty"`
+	Disabled *bool   `json:"disabled,omitempty"`
+	ID       *string `json:"id,omitempty"` // select audio track by its ID
 }
 
 type WebRTCPeer interface {

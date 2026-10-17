@@ -2,6 +2,7 @@ import { getterTree, mutationTree, actionTree } from 'typed-vuex'
 import { get, set } from '~/utils/localstorage'
 import { EVENT } from '~/neko/events'
 import { ScreenConfigurations, ScreenResolution } from '~/neko/types'
+import { AudioTrack } from '~/neko/messages'
 import { accessor } from '~/store'
 
 export const namespaced = true
@@ -20,6 +21,9 @@ export const state = () => ({
   muted: get<boolean>('muted', false),
   playing: false,
   playable: false,
+  audioTracks: [] as AudioTrack[],
+  audioTrack: '', // track the server is currently sending
+  audioTrackPreferred: get<string>('audio_track', ''), // track the user picked last time
 })
 
 export const getters = getterTree(state, {
@@ -132,6 +136,19 @@ export const mutations = mutationTree(state, {
     })
   },
 
+  setAudioTracks(state, tracks: AudioTrack[]) {
+    state.audioTracks = tracks
+  },
+
+  setAudioTrack(state, id: string) {
+    state.audioTrack = id
+  },
+
+  setAudioTrackPreferred(state, id: string) {
+    state.audioTrackPreferred = id
+    set('audio_track', id)
+  },
+
   setVolume(state, volume: number) {
     state.volume = volume
     set('volume', volume)
@@ -163,6 +180,7 @@ export const mutations = mutationTree(state, {
     state.vertical = 9
     state.playing = false
     state.playable = false
+    state.audioTrack = ''
   },
 })
 
@@ -183,6 +201,33 @@ export const actions = actionTree(
       }
 
       $client.sendMessage(EVENT.SCREEN.RESOLUTION)
+    },
+
+    // user picked an audio track
+    audioTrackSet({ commit }, id: string) {
+      commit('setAudioTrackPreferred', id)
+
+      if (!accessor.connected || id === accessor.video.audioTrack) {
+        return
+      }
+
+      $client.sendMessage(EVENT.AUDIO.TRACK, { id })
+    },
+
+    // server reported the track it is sending; on a new connection it starts with
+    // the default track, so switch to the user's remembered one if it still exists
+    audioTrackChanged({ state, commit }, id: string) {
+      commit('setAudioTrack', id)
+
+      const preferred = state.audioTrackPreferred
+      if (
+        preferred &&
+        preferred !== id &&
+        accessor.connected &&
+        state.audioTracks.some((track) => track.id === preferred)
+      ) {
+        $client.sendMessage(EVENT.AUDIO.TRACK, { id: preferred })
+      }
     },
 
     screenSet(store, resolution: ScreenResolution) {

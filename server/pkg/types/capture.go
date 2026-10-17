@@ -129,8 +129,62 @@ type EncodedStreamSelector interface {
 }
 
 type EncodedMediaSource interface {
+	// Audio returns the default audio stream (the first configured audio track).
 	Audio() EncodedStream
+	// AudioSelector selects between all configured audio tracks by their ID.
+	AudioSelector() EncodedStreamSelector
+	// AudioTracks lists the configured audio tracks in their configured order.
+	AudioTracks() []AudioTrack
 	Video() EncodedStreamSelector
+}
+
+// AudioTrack describes one selectable audio output track.
+type AudioTrack struct {
+	ID    string `json:"id"`
+	Label string `json:"label"`
+}
+
+// AudioConfig describes one audio pipeline (track) clients can choose from.
+type AudioConfig struct {
+	Label       string `mapstructure:"label"`        // human readable name shown to clients, defaults to the id
+	Device      string `mapstructure:"device"`       // pulseaudio source, defaults to capture.audio.device
+	Channels    int    `mapstructure:"channels"`     // channels captured from the device, defaults to 2
+	GstFilter   string `mapstructure:"gst_filter"`   // elements inserted after the source, e.g. "nekosurround mode=plii"
+	GstPipeline string `mapstructure:"gst_pipeline"` // whole pipeline as a string, {device} is replaced
+}
+
+// GetPipeline returns the full capture pipeline for this audio track.
+// The pipeline always ends in stereo raw audio fed to the encoder and an appsink.
+func (config *AudioConfig) GetPipeline(defaultDevice string, encoder string) string {
+	device := config.Device
+	if device == "" {
+		device = defaultDevice
+	}
+
+	if config.GstPipeline != "" {
+		return strings.ReplaceAll(config.GstPipeline, "{device}", device)
+	}
+
+	channels := config.Channels
+	if channels <= 0 {
+		channels = 2
+	}
+
+	filter := ""
+	if config.GstFilter != "" {
+		filter = "! " + strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(config.GstFilter), "!")) + " "
+	}
+
+	return fmt.Sprintf(
+		"pulsesrc device=%s "+
+			"! audio/x-raw,channels=%d "+
+			"%s"+
+			"! audioconvert "+
+			"! audio/x-raw,channels=2 "+
+			"! queue max-size-buffers=5 leaky=downstream "+
+			"! %s "+
+			"! appsink name=appsink", device, channels, filter, encoder,
+	)
 }
 
 type StreamSrcManager interface {

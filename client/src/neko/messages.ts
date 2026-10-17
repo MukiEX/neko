@@ -45,6 +45,8 @@ export type WebSocketPayloads =
   | AdminLockPayload
   | BroadcastStatusPayload
   | BroadcastCreatePayload
+  | AudioTracksPayload
+  | AudioTrackPayload
 
 export interface WebSocketMessage {
   event: WebSocketEvents | string
@@ -208,6 +210,24 @@ export interface FileTransferListPayload {
   user_upload: boolean
   user_delete: boolean
   files: FileListItem[]
+}
+
+/*
+  AUDIO PAYLOADS
+*/
+export interface AudioTrack {
+  id: string
+  label: string
+}
+
+// audio/tracks
+export interface AudioTracksPayload {
+  tracks: AudioTrack[]
+}
+
+// audio/track
+export interface AudioTrackPayload {
+  id: string
 }
 
 /*

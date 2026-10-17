@@ -91,6 +91,7 @@ export const setting = {
   ignore_emotes: 'Ignore Emotes',
   chat_sound: 'Play Chat Sound',
   keyboard_layout: 'Keyboard Layout',
+  audio_track: 'Audio Track',
   broadcast_title: 'Live Broadcast',
 }
 

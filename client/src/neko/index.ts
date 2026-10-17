@@ -17,6 +17,8 @@ import {
   ControlClipboardPayload,
   ScreenConfigurationsPayload,
   ScreenResolutionPayload,
+  AudioTracksPayload,
+  AudioTrackPayload,
   BroadcastStatusPayload,
   AdminTargetPayload,
   AdminLockMessage,
@@ -380,6 +382,17 @@ export class NekoClient extends BaseClient implements EventEmitter<NekoEvents> {
   /////////////////////////////
   protected [EVENT.OPENINAPP.INIT]({ enabled }: { enabled: boolean }) {
     this.$accessor.openinapp.setEnabled(enabled)
+  }
+
+  /////////////////////////////
+  // Audio Events
+  /////////////////////////////
+  protected [EVENT.AUDIO.TRACKS]({ tracks }: AudioTracksPayload) {
+    this.$accessor.video.setAudioTracks(tracks)
+  }
+
+  protected [EVENT.AUDIO.TRACK]({ id }: AudioTrackPayload) {
+    this.$accessor.video.audioTrackChanged(id)
   }
 
   /////////////////////////////

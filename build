@@ -318,7 +318,7 @@ if [ ! -z "$FLAVOR" ] && [ -f "runtime/Dockerfile.$FLAVOR" ]; then
 fi
 
 log "Building base image: $BASE_IMAGE"
-docker run --rm -i \
+docker run --rm -i --security-opt label=disable \
   -v "$(pwd)":/src \
   -e "RUNTIME_DOCKERFILE=$RUNTIME_DOCKERFILE" \
   --workdir /src \

@@ -342,9 +342,9 @@ Overview of available encoders for each codec is shown in the table below. The e
 
 ## WebRTC Audio {#audio}
 
-Only one audio pipeline can be defined in neko. The audio pipeline is used to capture and encode audio, similar to the video pipeline. The encoded audio is then sent to the client using WebRTC.
+The audio pipeline is used to capture and encode audio, similar to the video pipeline. The encoded audio is then sent to the client using WebRTC. Neko can offer several audio tracks, see [Multiple Audio Tracks](#audio.tracks).
 
-The Gstreamer pipeline is started when the first client requests the video stream and is stopped after the last client disconnects.
+The Gstreamer pipeline is started when the first client requests the audio stream and is stopped after the last client disconnects.
 
 <ConfigurationTab options={configOptions} filter={[
   "capture.audio.device",
@@ -354,7 +354,7 @@ The Gstreamer pipeline is started when the first client requests the video strea
 
 - <Def id="audio.device" /> is the name of the [pulseaudio device](https://wiki.archlinux.org/title/PulseAudio/Examples) that you want to capture. If not specified, the default audio device will be used.
 - <Def id="audio.codec" /> available codecs are `opus`, `g722`, `pcmu`, `pcma`. [Supported audio codecs](https://developer.mozilla.org/en-US/docs/Web/Media/Guides/Formats/WebRTC_codecs#supported_audio_codecs) are dependent on the WebRTC implementation used by the client, `opus` is supported by all WebRTC implementations.
-- <Def id="audio.pipeline" /> is the Gstreamer pipeline description that is used to capture and encode audio. You can use `{device}` as a placeholder for the audio device name that will be replaced by the actual device name at runtime.
+- <Def id="audio.pipeline" /> is the Gstreamer pipeline description that is used to capture and encode audio. You can use `{device}` as a placeholder for the audio device name that will be replaced by the actual device name at runtime. Ignored when <Opt id="audio.pipelines" /> is set.
 
 <details>
   <summary>Example pipeline configuration</summary>
@@ -372,6 +372,48 @@ capture:
 ```
 
 </details>
+
+### Multiple Audio Tracks {#audio.tracks}
+
+Neko can offer several audio tracks, and every user picks the one they listen to (in the default client under *Settings* &rarr; *Audio Track*). All tracks share the same <Opt id="audio.codec" />. A track's pipeline only runs while at least one user listens to it.
+
+<ConfigurationTab options={configOptions} filter={[
+  "capture.audio.ids",
+  "capture.audio.pipelines",
+]} comments={false} />
+
+- <Def id="audio.ids" /> is the ordered list of track ids shown to users, the first one is the default track. When empty, all tracks are offered, sorted by id.
+- <Def id="audio.pipelines" /> maps a track id to its configuration:
+  - `label` is the name users see, defaults to the id.
+  - `device` is the pulseaudio device to capture, defaults to <Opt id="audio.device" />.
+  - `channels` is the number of channels captured from the device, defaults to `2`.
+  - `gst_filter` is inserted between the capture and the encoder, e.g. to downmix surround audio. Whatever it outputs is converted to stereo.
+  - `gst_pipeline` replaces the whole pipeline, like <Opt id="audio.pipeline" />; it must end with `appsink name=appsink`.
+
+<details>
+  <summary>Example: 7.1 audio as Pro Logic II and Dolby Headphone tracks</summary>
+
+This uses the `nekosurround` Gstreamer element from `utils/surround`, see `examples/surround` for a complete image.
+
+```yaml title="config.yaml"
+capture:
+  audio:
+    device: audio_output.monitor
+    ids: [ plii, dolbyhp ]
+    pipelines:
+      plii:
+        label: Pro Logic II
+        channels: 8
+        gst_filter: audioconvert ! nekosurround mode=plii
+      dolbyhp:
+        label: Dolby Headphone
+        channels: 8
+        gst_filter: audioconvert ! nekosurround mode=dolby-headphone dh-room=1 dh-surround-angle=136 dh-rear-angle=150
+```
+
+</details>
+
+Clients select a track with the `signal/audio` message, e.g. `{ "id": "dolbyhp" }`; the server answers with the selected `id`. The available tracks are listed in `webrtc.audios` of the `system/init` message. Clients of the legacy protocol receive `audio/tracks` after connecting and `audio/track` whenever their track changes, and select one by sending `audio/track` with an `id`.
 
 ## Broadcast {#broadcast}
 

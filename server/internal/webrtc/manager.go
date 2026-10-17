@@ -280,8 +280,19 @@ func (manager *WebRTCManagerCtx) CreatePeer(session types.Session) (*webrtc.Sess
 	logger.Info().Msg("creating webrtc peer")
 
 	// all audios must have the same codec
-	audio := manager.capture.Audio()
+	audio := manager.capture.AudioSelector()
 	audioCodec := audio.Codec()
+	audioIDs := audio.IDs()
+	if len(audioIDs) == 0 {
+		return nil, nil, errors.New("no audio streams available")
+	}
+	defaultAudio, ok := audio.GetStream(types.StreamSelector{
+		ID:   audioIDs[0],
+		Type: types.StreamSelectorTypeExact,
+	})
+	if !ok {
+		return nil, nil, types.ErrWebRTCStreamNotFound
+	}
 
 	// all videos must have the same codec
 	video := manager.capture.Video()
@@ -318,8 +329,8 @@ func (manager *WebRTCManagerCtx) CreatePeer(session types.Session) (*webrtc.Sess
 	// we disable audio by default manually
 	audioTrack.SetPaused(true)
 
-	// set stream for audio track
-	_, err = audioTrack.SetStream(audio)
+	// set default stream for audio track, peers can switch it later
+	_, err = audioTrack.SetStream(defaultAudio)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -372,6 +383,7 @@ func (manager *WebRTCManagerCtx) CreatePeer(session types.Session) (*webrtc.Sess
 		iceTrickle:      manager.config.ICETrickle,
 		estimatorConfig: manager.config.Estimator,
 		audioDisabled:   true, // we disable audio by default manually
+		audioID:         audioIDs[0],
 	}
 
 	connection.OnTrack(func(track *webrtc.TrackRemote, receiver *webrtc.RTPReceiver) {

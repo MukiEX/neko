@@ -17,6 +17,12 @@ const (
 	SIGNAL_CANDIDATE = "signal/candidate"
 )
 
+// Extension of the legacy protocol: selectable audio output tracks.
+const (
+	AUDIO_TRACKS = "audio/tracks" // server -> client: list of available tracks
+	AUDIO_TRACK  = "audio/track"  // both ways: currently selected / requested track
+)
+
 const (
 	MEMBER_LIST         = "member/list"
 	MEMBER_CONNECTED    = "member/connected"

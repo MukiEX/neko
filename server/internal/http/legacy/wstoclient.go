@@ -251,6 +251,26 @@ func (s *session) wsToClient(msg []byte) error {
 			return err
 		}
 
+		//
+		// AudioTracks
+		//
+
+		audioTracks := make([]oldMessage.AudioTrack, 0, len(request.WebRTC.Audios))
+		for _, track := range request.WebRTC.Audios {
+			audioTracks = append(audioTracks, oldMessage.AudioTrack{
+				ID:    track.ID,
+				Label: track.Label,
+			})
+		}
+
+		err = s.toClient(&oldMessage.AudioTracks{
+			Event:  oldEvent.AUDIO_TRACKS,
+			Tracks: audioTracks,
+		})
+		if err != nil {
+			return err
+		}
+
 		locks, err := s.settingsToLocks(request.Settings)
 		if err != nil {
 			return err
@@ -435,9 +455,21 @@ func (s *session) wsToClient(msg []byte) error {
 		return nil
 
 	// Signal Events
-	case event.SIGNAL_VIDEO, event.SIGNAL_AUDIO:
-		// ignore video and audio signals, because they are not part of the legacy protocol
+	case event.SIGNAL_VIDEO:
+		// ignore video signals, because they are not part of the legacy protocol
 		return nil
+
+	case event.SIGNAL_AUDIO:
+		request := &types.PeerAudio{}
+		err := json.Unmarshal(data.Payload, request)
+		if err != nil {
+			return err
+		}
+
+		return s.toClient(&oldMessage.AudioTrackSelect{
+			Event: oldEvent.AUDIO_TRACK,
+			ID:    request.ID,
+		})
 
 	case event.SIGNAL_OFFER:
 		request := &message.SignalDescription{}
@@ -498,12 +530,20 @@ func (s *session) wsToClient(msg []byte) error {
 			})
 		}
 
-		return s.toClient(&oldMessage.SignalProvide{
+		err = s.toClient(&oldMessage.SignalProvide{
 			Event: oldEvent.SIGNAL_PROVIDE,
 			ID:    s.id, // SessionId
 			SDP:   request.SDP,
 			Lite:  len(iceServers) == 0, // if no ICE servers are provided, it's a lite offer
 			ICE:   iceServers,
+		})
+		if err != nil {
+			return err
+		}
+
+		return s.toClient(&oldMessage.AudioTrackSelect{
+			Event: oldEvent.AUDIO_TRACK,
+			ID:    request.Audio.ID,
 		})
 
 	// Control Events

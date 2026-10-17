@@ -1,0 +1,26 @@
+# Two selectable audio tracks, both made from the 7.1 virtual output.
+# Users pick one under Settings > Audio Track; the first id is the default.
+# A track's pipeline only runs while somebody listens to it.
+capture:
+  audio:
+    device: audio_output.monitor
+    codec: opus
+    ids: [ plii, dolbyhp ]
+    pipelines:
+      plii:
+        label: Pro Logic II
+        channels: 8
+        # 7.1 back channels are mixed into the surrounds (Pro Logic II has one surround pair)
+        gst_filter: audioconvert ! nekosurround mode=plii
+      dolbyhp:
+        label: Dolby Headphone
+        channels: 8
+        # dh-room: 1 small (DH1), 2 medium (DH2), 3 large (DH3)
+        # dh-surround-angle: where the surround speakers (the sides in 7.1) sit, in degrees
+        #   from straight ahead, 90..165. 118 = the filters as made.
+        # dh-rear-angle: where the 7.1 rear speakers sit, 90..165; 0 = same as the surrounds.
+        #   Example "theater" placement: dh-surround-angle=136 dh-rear-angle=150
+        # 5.1 content always plays at the surround angle (also when the player labels its
+        # surrounds "rear"); only 7.1 content uses the rear angle.
+        # without a usable DolbyHph.dll this track plays a plain stereo downmix
+        gst_filter: audioconvert ! nekosurround mode=dolby-headphone dh-room=1 dh-surround-angle=118 dh-rear-angle=0 dh-dll=/etc/neko/dolby/DolbyHph.dll

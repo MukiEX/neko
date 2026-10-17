@@ -36,9 +36,11 @@ type Capture struct {
 	VideoPipelines   map[string]types.VideoConfig
 	VideoShowPointer bool
 
-	AudioDevice   string
-	AudioCodec    codec.RTPCodec
-	AudioPipeline string
+	AudioDevice    string
+	AudioCodec     codec.RTPCodec
+	AudioPipeline  string
+	AudioIDs       []string
+	AudioPipelines map[string]types.AudioConfig
 
 	BroadcastAudioBitrate int
 	BroadcastVideoBitrate int
@@ -75,6 +77,16 @@ func (Capture) Init(cmd *cobra.Command) error {
 
 	cmd.PersistentFlags().String("capture.audio.pipeline", "", "gstreamer pipeline used for audio streaming")
 	if err := viper.BindPFlag("capture.audio.pipeline", cmd.PersistentFlags().Lookup("capture.audio.pipeline")); err != nil {
+		return err
+	}
+
+	cmd.PersistentFlags().StringSlice("capture.audio.ids", []string{}, "ordered list of selectable audio track ids, the first one is the default")
+	if err := viper.BindPFlag("capture.audio.ids", cmd.PersistentFlags().Lookup("capture.audio.ids")); err != nil {
+		return err
+	}
+
+	cmd.PersistentFlags().String("capture.audio.pipelines", "{}", "selectable audio tracks config, if empty a single track is built from capture.audio.device and capture.audio.pipeline")
+	if err := viper.BindPFlag("capture.audio.pipelines", cmd.PersistentFlags().Lookup("capture.audio.pipelines")); err != nil {
 		return err
 	}
 
@@ -327,6 +339,51 @@ func (Capture) InitV2(cmd *cobra.Command) error {
 
 // videoPipelineShorthandHook accepts a bare pipeline string in place of a full
 // video pipeline config, mirroring the capture.video.pipeline shorthand.
+func audioPipelineShorthandHook() mapstructure.DecodeHookFunc {
+	return func(from reflect.Type, to reflect.Type, data any) (any, error) {
+		if from.Kind() == reflect.String && to == reflect.TypeOf(types.AudioConfig{}) {
+			return types.AudioConfig{GstPipeline: data.(string)}, nil
+		}
+		return data, nil
+	}
+}
+
+// normalizeAudioPipelines makes sure AudioIDs only references configured tracks.
+// Without capture.audio.pipelines a single track "main" is used, which the capture
+// manager builds from capture.audio.device / capture.audio.pipeline.
+func (s *Capture) normalizeAudioPipelines() {
+	if len(s.AudioPipelines) == 0 {
+		// the capture manager builds the "main" track from AudioDevice and AudioPipeline,
+		// which may still be changed afterwards by the V2 compatibility config
+		s.AudioPipelines = nil
+		s.AudioIDs = []string{"main"}
+		return
+	}
+
+	if s.AudioPipeline != "" {
+		log.Warn().Msg("you are setting both single audio pipeline and multiple audio pipelines, ignoring single audio pipeline")
+	}
+
+	ids := make([]string, 0, len(s.AudioPipelines))
+	for _, id := range s.AudioIDs {
+		if _, ok := s.AudioPipelines[id]; ok {
+			ids = append(ids, id)
+		} else {
+			log.Warn().Str("audio_id", id).Msg("capture.audio.ids references unknown audio pipeline, ignoring")
+		}
+	}
+
+	if len(ids) == 0 {
+		for id := range s.AudioPipelines {
+			ids = append(ids, id)
+		}
+		sort.Strings(ids)
+		log.Warn().Strs("audio_ids", ids).Msg("no capture.audio.ids configured, using all audio pipelines sorted by id")
+	}
+
+	s.AudioIDs = ids
+}
+
 func videoPipelineShorthandHook() mapstructure.DecodeHookFunc {
 	return func(from reflect.Type, to reflect.Type, data any) (any, error) {
 		if from.Kind() == reflect.String && to == reflect.TypeOf(types.VideoConfig{}) {
@@ -456,6 +513,25 @@ func (s *Capture) Set() {
 		log.Warn().Str("codec", audioCodec).Msgf("unknown audio codec, using Opus")
 		s.AudioCodec = codec.Opus()
 	}
+
+	// from env, viper only splits on spaces, so also accept "plii,dolbyhp"
+	s.AudioIDs = []string{}
+	for _, item := range viper.GetStringSlice("capture.audio.ids") {
+		for _, id := range strings.Split(item, ",") {
+			if id = strings.TrimSpace(id); id != "" {
+				s.AudioIDs = append(s.AudioIDs, id)
+			}
+		}
+	}
+	if err := viper.UnmarshalKey("capture.audio.pipelines", &s.AudioPipelines, viper.DecodeHook(
+		mapstructure.ComposeDecodeHookFunc(
+			utils.JsonStringAutoDecode(s.AudioPipelines),
+			audioPipelineShorthandHook(),
+		),
+	)); err != nil {
+		log.Warn().Err(err).Msgf("unable to parse audio pipelines")
+	}
+	s.normalizeAudioPipelines()
 
 	// broadcast
 	s.BroadcastAudioBitrate = viper.GetInt("capture.broadcast.audio_bitrate")

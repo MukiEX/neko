@@ -1,0 +1,39 @@
+# Neko - Surround example
+#
+# Firefox + VLC on a 7.1 virtual output. Viewers choose under Settings > Audio Track:
+#   Pro Logic II     stereo that a Pro Logic II receiver decodes back to 5.1
+#   Dolby Headphone  virtual 5.1/7.1 for headphones, using your own DolbyHph.dll
+#
+# Build the image first, see examples/surround/README.md.
+services:
+  neko:
+    image: "neko-surround"
+    restart: "unless-stopped"
+    shm_size: "2gb"
+    ports:
+      - "8080:8080"
+      - "52000-52100:52000-52100/udp"
+    volumes:
+      # Required: your DolbyHph.dll (Dolby Headphone Engine 1.20.0276), see README.md.
+      # Only its room filters are read; nothing runs the DLL itself.
+      # create_host_path: false makes `docker compose up` fail if the file is missing,
+      # instead of Docker silently creating an empty directory in its place.
+      - type: bind
+        source: ./DolbyHph.dll
+        target: /etc/neko/dolby/DolbyHph.dll
+        read_only: true
+        bind:
+          create_host_path: false
+      # media for VLC
+      - "./media:/media:ro"
+    environment:
+      # which apps run on the desktop: firefox, vlc, or both (default)
+      #   NEKO_SURROUND_APPS=vlc docker compose up -d
+      NEKO_SURROUND_APPS: ${NEKO_SURROUND_APPS:-firefox,vlc}
+      NEKO_DESKTOP_SCREEN: '1920x1080@30'
+      NEKO_MEMBER_MULTIUSER_USER_PASSWORD: neko
+      NEKO_MEMBER_MULTIUSER_ADMIN_PASSWORD: admin
+      NEKO_WEBRTC_EPR: 52000-52100
+      NEKO_WEBRTC_ICELITE: 1
+      # See: https://neko.m1k1o.net/docs/v3/configuration/webrtc#nat1to1
+      # NEKO_WEBRTC_NAT1TO1: <your-IP>

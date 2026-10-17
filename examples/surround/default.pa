@@ -1,0 +1,19 @@
+#!/usr/bin/pulseaudio -nF
+
+### 7.1 virtual output: VLC plays 5.1 or 7.1 into it, stereo apps (Firefox) land on front L/R.
+### Neko captures its monitor once per selected track and downmixes it with nekosurround.
+load-module module-null-sink sink_name=audio_output channels=8 channel_map=front-left,front-right,front-center,lfe,rear-left,rear-right,side-left,side-right sink_properties=device.description="Virtual_Surround_71_Output"
+
+### Create virtual input device sink
+load-module module-null-sink sink_name=audio_input sink_properties=device.description="Virtual_Audio_Input"
+
+### Create a virtual audio source linked up to the virtual input device
+load-module module-virtual-source source_name=microphone master=audio_input.monitor source_properties=device.description="Virtual_Microphone"
+
+### Allow pulse audio to be accessed via TCP (from localhost only), to allow other users to access the virtual devices
+load-module module-native-protocol-unix socket=/tmp/pulseaudio.socket auth-anonymous=1
+
+### Make sure we always have a sink around, even if it is a null sink.
+load-module module-always-sink
+
+set-default-sink audio_output

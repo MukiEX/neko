@@ -20,10 +20,11 @@ type CaptureManagerCtx struct {
 	config  *config.Capture
 
 	// sinks
-	broadcast  *BroacastManagerCtx
-	screencast *ScreencastManagerCtx
-	audio      *StreamSinkManagerCtx
-	video      *StreamSelectorManagerCtx
+	broadcast   *BroacastManagerCtx
+	screencast  *ScreencastManagerCtx
+	audio       *StreamSelectorManagerCtx
+	audioTracks []types.AudioTrack
+	video       *StreamSelectorManagerCtx
 
 	// sources
 	webcam     *StreamSrcManagerCtx
@@ -71,6 +72,8 @@ func New(desktop types.DesktopManager, config *config.Capture) *CaptureManagerCt
 		// append to videos
 		videos[video_id] = streamSinkNew(config.VideoCodec, createPipeline, video_id)
 	}
+
+	audio, audioTracks := newAudioSelector(logger, config)
 
 	return &CaptureManagerCtx{
 		logger:  logger,
@@ -125,22 +128,9 @@ func New(desktop types.DesktopManager, config *config.Capture) *CaptureManagerCt
 			)
 		}()),
 
-		audio: streamSinkNew(config.AudioCodec, func() (string, error) {
-			if config.AudioPipeline != "" {
-				// replace {device} with valid device
-				return strings.Replace(config.AudioPipeline, "{device}", config.AudioDevice, 1), nil
-			}
-
-			return fmt.Sprintf(
-				"pulsesrc device=%s "+
-					"! audio/x-raw,channels=2 "+
-					"! audioconvert "+
-					"! queue max-size-buffers=5 leaky=downstream "+
-					"! %s "+
-					"! appsink name=appsink", config.AudioDevice, config.AudioCodec.Pipeline,
-			), nil
-		}, "audio"),
-		video: streamSelectorNew(config.VideoCodec, videos, config.VideoIDs),
+		audio:       audio,
+		audioTracks: audioTracks,
+		video:       streamSelectorNew(config.VideoCodec, videos, config.VideoIDs),
 
 		// sources
 		webcam: streamSrcNew(config.WebcamEnabled, map[string]string{
@@ -257,8 +247,21 @@ func (manager *CaptureManagerCtx) Screencast() types.ScreencastManager {
 	return manager.screencast
 }
 
+// Audio returns the default (first) audio track.
 func (manager *CaptureManagerCtx) Audio() types.EncodedStream {
+	stream, _ := manager.audio.GetStream(types.StreamSelector{
+		ID:   manager.audio.IDs()[0],
+		Type: types.StreamSelectorTypeExact,
+	})
+	return stream
+}
+
+func (manager *CaptureManagerCtx) AudioSelector() types.EncodedStreamSelector {
 	return manager.audio
+}
+
+func (manager *CaptureManagerCtx) AudioTracks() []types.AudioTrack {
+	return manager.audioTracks
 }
 
 func (manager *CaptureManagerCtx) Video() types.EncodedStreamSelector {

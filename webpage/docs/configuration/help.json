@@ -23,10 +23,29 @@
     "key": [
       "capture",
       "audio",
+      "ids"
+    ],
+    "type": "strings",
+    "description": "ordered list of selectable audio track ids, the first one is the default"
+  },
+  {
+    "key": [
+      "capture",
+      "audio",
       "pipeline"
     ],
     "type": "string",
     "description": "gstreamer pipeline used for audio streaming"
+  },
+  {
+    "key": [
+      "capture",
+      "audio",
+      "pipelines"
+    ],
+    "type": "object",
+    "defaultValue": {},
+    "description": "selectable audio tracks config, if empty a single track is built from capture.audio.device and capture.audio.pipeline"
   },
   {
     "key": [
